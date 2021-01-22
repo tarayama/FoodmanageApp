@@ -1,0 +1,9 @@
+Gitに載せたくない環境変数の値一覧
+
+config/settings.py
+    SECRET_KEY = '#1a7bqk$9%c2s+9e(+a-)zmgjiy_m86dzl9h%r9=9jm7sruvt&'
+
+foodmanager/views.py
+    yahoo_client_id = 'dj00aiZpPWFzd2tQN1NCUG1HbSZzPWNvbnN1bWVyc2VjcmV0Jng9ZWQ-'
+
+
