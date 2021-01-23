@@ -7,23 +7,20 @@ import json
 import requests
 import foodmanager.tesseract
 import foodmanager.foodbank
+import foodmanager.jancode
 import numpy as np
 from django.views.decorators.csrf import csrf_exempt
 
-# Create your views here.
+#ログイン前トップ
 def index(request):
-    #ログイン前トップ
     if request.user.is_authenticated:
         return redirect('top')
     return render(request, 'foodmanager/index.html', {})
 
+#ログイン後トップ
 @login_required
 def top(request):
-    #ログイン後トップ
     Food_list = Foodmanager.objects.filter(user=request.user)
-    #for food in Food_list:
-    #    print(food)
-    #print(Food_list)
     category_list = FoodCategory.objects.all()
     context = {
         'Food_list': Food_list,
@@ -31,8 +28,7 @@ def top(request):
         }
     return render(request, 'foodmanager/top.html',context)
 
-
-
+#カテゴリー作成(iOSアプリのため未実装)
 def make_category(request):
     category_list = FoodCategory.objects.filter(user=request.user)
     
@@ -47,6 +43,7 @@ def make_category(request):
                 return redirect('#')
     return render(request, 'foodmanager/top.html', {})
 
+#新規食品登録(iOSアプリのため未実装)
 def new_Food(request):
     Food_list = Foodmanager.objects.filter(user=request.user)
     category_list = FoodCategory.objects.filter(user=request.user)
@@ -72,42 +69,31 @@ def new_Food(request):
         }
     return render(request, 'foodmanager/new_food.html', {context})
 
+#JANコードからの商品名取得
 def jancode_to_productname(request, jancode):
     result = {}
     result['product_name'] = "ヒットしませんでした。手入力してください"
-    if jancode != 0:
-        print("jancodeを取得しました")
-    yahoo_client_id = 'dj00aiZpPWFzd2tQN1NCUG1HbSZzPWNvbnN1bWVyc2VjcmV0Jng9ZWQ-' #yahoo! network service
-    #code = '4902102072618' test用(coca-cola)
-    baseurl = "http://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch"
-    params = {
-        'appid' : yahoo_client_id,
-        'jan_code' : jancode
-    }
-    response = requests.get(baseurl, params=params)
+    food = foodmanager.jancode.FoodName(jancode)
     try:
-        values = json.loads(response.text)
-        result['product_name'] = values.get("hits")[0].get("name")
-        result ['parent_category_name'] = values.get("hits")[0].get("parentGenreCategories")
-        result['category_name'] = values.get("hits")[0].get("genreCategory").get("name")
-        result['description'] = values.get("hits")[0].get("description")
-        
+        food.setYahooProductName()
+        print(food.getName())
+        food.setShorterFoodName()
+        print(food.getName())
+        result['product_name'] = food.getName()
     except:
         return HttpResponse(json.dumps(result),status=400)
     return HttpResponse(json.dumps(result),status=200)
 
+#賞味期限画像からの賞味期限自体の認識
 @csrf_exempt
 def Image_to_Limit(request):
     result = {}
-    #try:
     if request.method == 'POST':
         print(request.FILES)
         print(request.FILES['uploadFile'])
         img = request.FILES['uploadFile']
-        #try:
         str_list = foodmanager.tesseract.pytesseract_jpn(img)
-        #except:
-        #    str_list = foodmanager.tesseract.pyocr_tesseract(img)
+        #str_list = foodmanager.tesseract.pyocr_tesseract(img)
         result_list = foodmanager.tesseract.drop_limit(str_list)
         print(result_list)
         result = {"result" : result_list}
@@ -115,21 +101,14 @@ def Image_to_Limit(request):
     else:
         result = {"result" : "error occurred. may be mistake method"}
         return HttpResponse(json.dumps(result),status=400)
-    
-   # except:
-    #    result = {"result" : "error occurred. failed to get image or failed to read limit"}
-    #    return HttpResponse(json.dumps(result),status=400)
 
+
+#郵便番号からの近隣5件のフードバンク検索
 def post_to_foodbank(request, postal_code): # 
-    #result = {}
-
     df = foodmanager.foodbank.get_near_foodbanks(str(postal_code))
     print(df)
     result = json.loads(df)
     print(type(result))
     result = {"result" : result }
     return HttpResponse(json.dumps(result, cls = foodmanager.foodbank.JsonEncoder),status=200)
-        
-    #except:
-    #    result = {"result" : "error occurred"}
-    #    return HttpResponse(json.dumps(result),status=400)
+   
